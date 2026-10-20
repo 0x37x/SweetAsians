@@ -10,6 +10,8 @@ import asyncio
 import os
 import json
 from dotenv import load_dotenv
+import threading
+from flask import Flask
 
 import main
 
@@ -81,7 +83,7 @@ async def discord_log_callback(msg: str, level: str):
 
 
 async def discord_report_callback(user_id: str, username: str, avatar_url: str, results: list):
-    """Callback upang magpadala ng summary embed report sa itinalagang Discord log channel at sa DM ng user."""
+    """Callback to send a summary embed report to the designated Discord log channel and to the user's DM.."""
     success_count = sum(1 for r in results if r["success"])
     total_count = len(results)
     
@@ -115,7 +117,7 @@ async def discord_report_callback(user_id: str, username: str, avatar_url: str, 
         if user:
             await user.send(embed=embed)
     except discord.Forbidden:
-        print(f"Hindi ma-padalhan ng DM si {username} dahil naka-off ang kanilang DMs.")
+        print(f"Cannot send a DM to {username} because their DMs are turned off.")
     except Exception as e:
         print(f"Error sending summary report to user DM: {e}")
 
@@ -275,7 +277,7 @@ class LoginModal(discord.ui.Modal, title="Log in to your account"):
 
 async def send_panel_logic(ctx_or_interaction):
     tokens = load_tokens()
-    user_count = len(tokens)  # Totoong bilang ng mga naka-link sa tokens.json
+    user_count = len(tokens)
     
     embed = discord.Embed(
         title=f"</> SweetAsians AutoQuest\n</> Users `{user_count:,}`",
@@ -286,7 +288,6 @@ async def send_panel_logic(ctx_or_interaction):
         ),
         color=0x2b2d31
     )
-    # Eksaktong anime banner image mula sa iyong file link
     embed.set_image(url="https://file.garden/aruhyqfWIhtnlMoZ/file_0000000021608207a76ed43b888c8f.png")
     
     if isinstance(ctx_or_interaction, discord.Interaction):
@@ -294,6 +295,7 @@ async def send_panel_logic(ctx_or_interaction):
         await ctx_or_interaction.response.send_message("✅ Panel successfully deployed!", ephemeral=True)
     else:
         await ctx_or_interaction.send(embed=embed, view=QuestPanelView())
+
 
 async def send_help_logic(ctx_or_interaction):
     embed = discord.Embed(
@@ -772,12 +774,29 @@ async def prefix_ping(ctx):
     await ctx.send(f"🏓 Pong! Latency: `{latency}ms`")
 
 
+# ── Flask Server para sa Render ────────────────────────────────────────────────
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "Bot is alive and running!"
+
+def run_flask():
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
+
+
 # ── Entrypoint ─────────────────────────────────────────────────────────────────
 def start_bot():
     bot_token = os.getenv("BOT_TOKEN")
     if not bot_token or bot_token.startswith("YOUR_") or bot_token == "":
         print("❌ Error: BOT_TOKEN has not been configured correctly in the `.env` file.")
         return
+
+    # Patakbuhin ang Flask sa hiwalay na thread para ma-scan ng Render ang port
+    flask_thread = threading.Thread(target=run_flask)
+    flask_thread.daemon = True
+    flask_thread.start()
 
     try:
         bot.run(bot_token)
