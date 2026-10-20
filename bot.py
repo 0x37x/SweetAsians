@@ -10,9 +10,6 @@ import asyncio
 import os
 import json
 from dotenv import load_dotenv
-import threading
-from flask import Flask
-
 import main
 
 load_dotenv()
@@ -774,29 +771,12 @@ async def prefix_ping(ctx):
     await ctx.send(f"🏓 Pong! Latency: `{latency}ms`")
 
 
-# ── Flask Server para sa Render ────────────────────────────────────────────────
-app = Flask(__name__)
-
-@app.route("/")
-def home():
-    return "Bot is alive and running!"
-
-def run_flask():
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
-
-
 # ── Entrypoint ─────────────────────────────────────────────────────────────────
 def start_bot():
     bot_token = os.getenv("BOT_TOKEN")
     if not bot_token or bot_token.startswith("YOUR_") or bot_token == "":
         print("❌ Error: BOT_TOKEN has not been configured correctly in the `.env` file.")
         return
-
-    # Patakbuhin ang Flask sa hiwalay na thread para ma-scan ng Render ang port
-    flask_thread = threading.Thread(target=run_flask)
-    flask_thread.daemon = True
-    flask_thread.start()
 
     try:
         bot.run(bot_token)
