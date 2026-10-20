@@ -1,0 +1,17 @@
+# Credentials and Tokens
+.env
+tokens.json
+token.token
+token.txt
+voice_config.json
+
+# Python temporary files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.ipynb_checkpoints/
+
+# IDE files
+.vscode/
+.idea/
